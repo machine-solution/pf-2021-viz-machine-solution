@@ -11,6 +11,7 @@ import java.awt.event.MouseMotionAdapter
 import javax.swing.WindowConstants
 
 fun main() {
+    gui()
     createWindow("pf-2021-viz")
 }
 

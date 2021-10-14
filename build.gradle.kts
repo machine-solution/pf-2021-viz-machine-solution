@@ -1,15 +1,43 @@
+import org.jetbrains.compose.compose
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
-    kotlin("jvm") version "1.5.10"
-    application
+    kotlin("jvm") version "1.5.21"
+//    kotlin("jvm") version "1.5.20" apply false
+    id("org.jetbrains.compose") version "1.0.0-alpha3"
 }
 
 group = "ru.spbu.math-cs"
-version = "1.0-SNAPSHOT"
+version = "1.0"
 
 repositories {
+    google()
     mavenCentral()
     maven("https://dl.bintray.com/kotlin/kotlin-eap")
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+}
+
+dependencies {
+    implementation(kotlin("stdlib"))
+    testImplementation(kotlin("test"))
+    implementation(compose.desktop.currentOs)
+}
+
+tasks.withType<KotlinCompile>() {
+    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+compose.desktop {
+    application {
+        mainClass = "MainKt"
+        nativeDistributions {
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            packageName = "pf-2021-viz"
+            packageVersion = "1.0.0"
+        }
+    }
 }
 
 val osName = System.getProperty("os.name")
@@ -27,27 +55,13 @@ var targetArch = when (osArch) {
     else -> error("Unsupported arch: $osArch")
 }
 
-val target = "${targetOs}-${targetArch}"
-
-var version = "0.0.0-SNAPSHOT"
-if (project.hasProperty("skiko.version")) {
-    version = project.properties["skiko.version"] as String
-}
-
-dependencies {
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.4.1")
-    implementation("org.jetbrains.skiko:skiko-jvm-runtime-$target:$version")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.2.1")
-    testImplementation(kotlin("test"))
-}
-
-
-tasks.getByName<Test>("test") {
-    useJUnitPlatform()
-}
-
-application {
-    mainClass.set("MainKt")
+subprojects {
+    ext {
+        set("target", "${targetOs}-${targetArch}")
+        var version = "0.0.0-SNAPSHOT"
+        if (project.hasProperty("skiko.version")) {
+            version = project.properties["skiko.version"] as String
+        }
+        set ("version", version)
+    }
 }

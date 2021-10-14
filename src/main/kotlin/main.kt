@@ -8,23 +8,36 @@ import org.jetbrains.skiko.SkiaWindow
 import java.awt.Dimension
 import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
+import java.io.File
 import javax.swing.WindowConstants
 import kotlin.math.*
+import kotlin.random.*
 
 enum class Chart
 {
     NULL,
     PIE_CHART,
     HISTOGRAM,
+    DISPERSION_CHART,
 }
 
 val data = listOf(1f,2f,3f,4f,5f,6f,7f,8f,9f,10f,11f,12f,13f,14f,15f,16f,17f,18f,19f, 20f, 21f)
 val names = listOf("1", "2", "3","4", "5", "6","7", "8", "9", "10",
     "11", "12", "13","14", "15", "16","17", "18", "19", "20", "21")
-var chart = Chart.PIE_CHART
+val dataX = mutableListOf<Float>()
+val dataY = mutableListOf<Float>()
+var chart = Chart.DISPERSION_CHART
 
 fun main() {
 //    gui()
+    val lines = File("dispersion.txt").readLines()
+    for (i in 1..1000) {
+//        File("dispersion.txt").appendText("${Random.nextFloat()} ${Random.nextFloat()}\n")
+        val xy = lines[i - 1].split(" ")
+        dataX.add(xy[0].toFloat())
+        dataY.add(xy[1].toFloat())
+    }
+
     createWindow("pf-2021-viz")
 }
 
@@ -43,14 +56,9 @@ fun createWindow(title: String) = runBlocking(Dispatchers.Swing) {
     window.isVisible = true
 }
 
-class Renderer(val layer: SkiaLayer): SkiaRenderer {
-    val typeface = Typeface.makeFromFile("fonts/JetBrainsMono-Regular.ttf")
-    val font = Font(typeface, 16f)
-    val paint = Paint().apply {
-        color = 0xff000000L.toInt()
-        mode = PaintMode.FILL
-        strokeWidth = 1f
-    }
+class Renderer(private val layer: SkiaLayer): SkiaRenderer {
+    private val typeface = Typeface.makeFromFile("fonts/JetBrainsMono-Regular.ttf")
+    private val font = Font(typeface, 16f)
 
     private fun paint(id: Int): Paint
     {
@@ -102,7 +110,6 @@ class Renderer(val layer: SkiaLayer): SkiaRenderer {
         val sizeDescriptionBound = 3f
         val yOffset = 25f
 
-        val cnt = (data.size - 1)
         var i = 0
         val sumData = data.sum()
         var currentSum = 0f
@@ -179,6 +186,65 @@ class Renderer(val layer: SkiaLayer): SkiaRenderer {
         }
     }
 
+    private fun dispersionChart(dataX: List<Float>, dataY: List<Float>, canvas: Canvas)
+    {
+        val leftBound = 50f
+        val rightBound = 750f
+        val upBound = 50f
+        val downBound = 520f
+        val broad = 20f
+        val streak = 4.5f
+
+        val minX = dataX.minOrNull() ?: 0f
+        val maxX = dataX.maxOrNull() ?: 0f
+        val minY = dataY.minOrNull() ?: 0f
+        val maxY = dataY.maxOrNull() ?: 0f
+
+        fun scaleX(x: Float): Float
+        {
+            return leftBound + (rightBound - leftBound)*( (x - minX) / (maxX - minX))
+        }
+
+        fun scaleY(y: Float): Float
+        {
+            return upBound + (downBound - upBound)*( (y - minY) / (maxY - minY))
+        }
+// граница
+        canvas.drawLine(leftBound - broad, upBound - broad,
+            leftBound - broad, downBound + broad, paint(0))
+        canvas.drawLine(leftBound - broad, downBound + broad,
+            rightBound + broad, downBound + broad, paint(0))
+// единичные отрезки для наглядность отношения масштабов по координатам
+        val lengthX = maxX - minX
+        val lengthY = maxY - minY
+        val c = 15f
+        val step = sqrt(lengthX * lengthY / c)
+        var x = minX
+        var y = maxY
+        while (x <= maxX + step)
+        {
+            canvas.drawLine(scaleX(x) - broad, downBound + streak + broad,
+                scaleX(x) - broad, downBound - streak + broad, paint(2).setStrokeWidth(2.5f))
+            x += step
+        }
+        while (y >= minY - step)
+        {
+            canvas.drawLine(leftBound + streak - broad, scaleY(y) + broad,
+                leftBound - streak - broad,  scaleY(y) + broad, paint(2).setStrokeWidth(2.5f))
+            y -= step
+        }
+
+        for (it in dataX.indices)
+        {
+            canvas.drawPoint(scaleX(dataX[it]), scaleY(dataY[it]), paint(-1).setStrokeWidth(3f))
+        }
+    }
+
+    private fun petalChart()
+    {
+
+    }
+
     override fun onRender(canvas: Canvas, width: Int, height: Int, nanoTime: Long) {
         val contentScale = layer.contentScale
         canvas.scale(contentScale, contentScale)
@@ -187,10 +253,12 @@ class Renderer(val layer: SkiaLayer): SkiaRenderer {
 
 
         // РИСОВАНИЕ
-        // Круговая диаграмма
+        // Отрисовка диаграмм
         when (chart) {
             Chart.PIE_CHART -> pieChart(data, names, canvas)
             Chart.HISTOGRAM -> histogram(data, names, canvas)
+            Chart.DISPERSION_CHART -> dispersionChart(dataX, dataY, canvas)
+            Chart.NULL -> Unit
         }
 
         //

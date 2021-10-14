@@ -19,6 +19,7 @@ enum class Chart
     PIE_CHART,
     HISTOGRAM,
     DISPERSION_CHART,
+    PETAL_CHART,
 }
 
 val data = listOf(1f,2f,3f,4f,5f,6f,7f,8f,9f,10f,11f,12f,13f,14f,15f,16f,17f,18f,19f, 20f, 21f)
@@ -26,7 +27,15 @@ val names = listOf("1", "2", "3","4", "5", "6","7", "8", "9", "10",
     "11", "12", "13","14", "15", "16","17", "18", "19", "20", "21")
 val dataX = mutableListOf<Float>()
 val dataY = mutableListOf<Float>()
-var chart = Chart.DISPERSION_CHART
+
+val dataRose = mutableListOf(
+    Rose(listOf(1f,2f,3f,4f,4f)),
+    Rose(listOf(3f,1f,2f,5f,5f)),
+    Rose(listOf(2f,3f,1f,6f,6f)),
+)
+var chart = Chart.PETAL_CHART
+
+data class Rose(val values: List<Float>)
 
 fun main() {
 //    gui()
@@ -94,6 +103,11 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
 
             else -> Paint().setARGB(255,0,0,0)
         }
+    }
+
+    private fun toAlpha(paint: Paint): Paint
+    {
+        return paint.setAlpha(17 * 6)
     }
 
     private fun pieChart(data: List<Float>, names: List<String>, canvas: Canvas)
@@ -240,9 +254,67 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         }
     }
 
-    private fun petalChart()
+    private fun petalChart(count: Int, data: List<Rose>, canvas: Canvas)
     {
+        val leftBound = 175f
+        val rightBound = 625f
+        val upBound = 50f
+        val downBound = 500f
 
+        // отрисовка каркаса розы
+        val centerX = (leftBound + rightBound) / 2
+        val centerY = (upBound + downBound) / 2
+        val radius = centerX - leftBound
+        val radiusEnd = radius * 0.9f
+        for (i in 0 until count)
+        {
+            canvas.drawLine(centerX, centerY,
+            centerX + cos(i * 2 * PI / count).toFloat() * radius,
+            centerY + sin(i * 2 * PI / count).toFloat() * radius,
+            paint(-1).setStrokeWidth(3f))
+        }
+
+        val maxData = MutableList(count){ 0f }
+        data.forEach{
+            for (i in 0 until count)
+                maxData[i] = max(maxData[i], it.values[i])
+        }
+
+        var id = 0
+        data.forEach{
+            for (i in 0 until count)
+            {
+                canvas.drawLine(
+                    centerX + cos(i * 2 * PI / count).toFloat() * radiusEnd * it.values[i] / maxData[i],
+                    centerY + sin(i * 2 * PI / count).toFloat() * radiusEnd * it.values[i] / maxData[i],
+                    centerX + cos((i + 1) * 2 * PI / count).toFloat() * radiusEnd
+                            * it.values[(i + 1) % count] / maxData[(i + 1) % count],
+                    centerY + sin((i + 1) * 2 * PI / count).toFloat() * radiusEnd
+                            * it.values[(i + 1) % count] / maxData[(i + 1) % count],
+                    paint(id).setStrokeWidth(2f))
+                val triangle = arrayOf(
+                    Point(
+                        centerX,centerY
+                    ),
+                    Point(
+                        centerX + cos(i * 2 * PI / count).toFloat() * radiusEnd * it.values[i] / maxData[i],
+                        centerY + sin(i * 2 * PI / count).toFloat() * radiusEnd * it.values[i] / maxData[i]
+                    ),
+                    Point(
+                        centerX + cos((i + 1) * 2 * PI / count).toFloat() * radiusEnd
+                                * it.values[(i + 1) % count] / maxData[(i + 1) % count],
+                        centerY + sin((i + 1) * 2 * PI / count).toFloat() * radiusEnd
+                                * it.values[(i + 1) % count] / maxData[(i + 1) % count]
+                    )
+                )
+                canvas.drawTriangles(triangle, null, toAlpha(paint(id)))
+                canvas.drawPoint(
+                    centerX + cos(i * 2 * PI / count).toFloat() * radiusEnd * it.values[i] / maxData[i],
+                    centerY + sin(i * 2 * PI / count).toFloat() * radiusEnd * it.values[i] / maxData[i],
+                    paint(id).setStrokeWidth(8f))
+            }
+            id++
+        }
     }
 
     override fun onRender(canvas: Canvas, width: Int, height: Int, nanoTime: Long) {
@@ -258,6 +330,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
             Chart.PIE_CHART -> pieChart(data, names, canvas)
             Chart.HISTOGRAM -> histogram(data, names, canvas)
             Chart.DISPERSION_CHART -> dispersionChart(dataX, dataY, canvas)
+            Chart.PETAL_CHART -> petalChart(dataRose[0].values.size, dataRose, canvas)
             Chart.NULL -> Unit
         }
 

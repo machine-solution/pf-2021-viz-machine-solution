@@ -15,12 +15,17 @@ import java.io.File
 import kotlin.system.exitProcess
 
 @Composable
-fun simpleButton(colorful: Boolean, name: String, onClick : () -> Unit) {
-    val color = if (colorful)
-        ButtonDefaults.buttonColors(backgroundColor = Color.Red, contentColor = Color.Black)
-    else
-        ButtonDefaults.buttonColors(backgroundColor = Color.Blue, contentColor = Color.White)
-    Button(colors = color, onClick = onClick) {Text(name)}
+fun simpleButton(colorful: Boolean, name: String, locked: Boolean = false, onClick : () -> Unit) {
+    if (!locked) {
+        val color = if (colorful)
+            ButtonDefaults.buttonColors(backgroundColor = Color.Red, contentColor = Color.Black)
+        else
+            ButtonDefaults.buttonColors(backgroundColor = Color.Blue, contentColor = Color.White)
+        Button(colors = color, onClick = onClick) { Text(name) }
+    } else {
+        val color = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray, contentColor = Color.LightGray)
+        Button(colors = color, onClick = {} ) { Text(name) }
+    }
 }
 
 fun isCorrectPath(path: String): String {
@@ -77,7 +82,8 @@ fun gui() = application {
                     // фиктивная переменная
                     i.value = 1 - i.value
                 }
-                simpleButton(false, "Save"){
+                simpleButton(false, "Save",
+                isCorrectPath(pathSave.value) != "The path is correct"){
                     needSave = true
                 }
                 simpleButton(false, "Exit"){

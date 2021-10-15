@@ -20,6 +20,7 @@ enum class Chart
     HISTOGRAM,
     DISPERSION_CHART,
     PETAL_CHART,
+    GRAPH_CHART,
 }
 
 val data = listOf(1f,2f,3f,4f,5f,6f,7f,8f,9f,10f,11f,12f,13f,14f,15f,16f,17f,18f,19f, 20f, 21f)
@@ -33,12 +34,20 @@ val dataRose = mutableListOf(
     Rose(listOf(3f,1f,2f,5f,5f)),
     Rose(listOf(2f,3f,1f,6f,6f)),
 )
-var chart = Chart.PETAL_CHART
+
+val dataGraph = mutableListOf(
+    Graph(listOf(1f,2f,3f), listOf(1f,1f,1f)),
+    Graph(listOf(1f,2f,3f), listOf(1f,0f,1f)),
+    Graph(listOf(1f,2f,3f), listOf(2f,4f,6f))
+)
+var chart = Chart.NULL
 
 data class Rose(val values: List<Float>)
 
+data class Graph(val arguments: List<Float>, val values: List<Float>)
+
 fun main() {
-//    gui()
+
     val lines = File("dispersion.txt").readLines()
     for (i in 1..1000) {
 //        File("dispersion.txt").appendText("${Random.nextFloat()} ${Random.nextFloat()}\n")
@@ -47,7 +56,9 @@ fun main() {
         dataY.add(xy[1].toFloat())
     }
 
-    createWindow("pf-2021-viz")
+    createWindow("draw area")
+
+    gui()
 }
 
 fun createWindow(title: String) = runBlocking(Dispatchers.Swing) {
@@ -221,7 +232,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
 
         fun scaleY(y: Float): Float
         {
-            return upBound + (downBound - upBound)*( (y - minY) / (maxY - minY))
+            return downBound + (upBound - downBound)*( (y - minY) / (maxY - minY))
         }
 // граница
         canvas.drawLine(leftBound - broad, upBound - broad,
@@ -234,18 +245,18 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         val c = 15f
         val step = sqrt(lengthX * lengthY / c)
         var x = minX
-        var y = maxY
+        var y = minY
         while (x <= maxX + step)
         {
             canvas.drawLine(scaleX(x) - broad, downBound + streak + broad,
                 scaleX(x) - broad, downBound - streak + broad, paint(2).setStrokeWidth(2.5f))
             x += step
         }
-        while (y >= minY - step)
+        while (y <= maxY + step)
         {
             canvas.drawLine(leftBound + streak - broad, scaleY(y) + broad,
                 leftBound - streak - broad,  scaleY(y) + broad, paint(2).setStrokeWidth(2.5f))
-            y -= step
+            y += step
         }
 
         for (it in dataX.indices)
@@ -274,7 +285,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
             paint(-1).setStrokeWidth(3f))
         }
 
-        val maxData = MutableList(count){ 0f }
+        val maxData = MutableList(count){ -1e9f }
         data.forEach{
             for (i in 0 until count)
                 maxData[i] = max(maxData[i], it.values[i])
@@ -317,6 +328,73 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         }
     }
 
+    private fun graphChart(count: Int, data: List<Graph>, canvas: Canvas)
+    {
+        val leftBound = 50f
+        val rightBound = 750f
+        val upBound = 50f
+        val downBound = 520f
+        val broad = 20f
+        val streak = 4.5f
+
+        var minX = 1e9f
+        var maxX = -1e9f
+        var minY = 1e9f
+        var maxY = -1e9f
+
+        data.forEach{
+            minX = min(minX, it.arguments.minOrNull()!!)
+            minY = min(minY, it.values.minOrNull()!!)
+            maxX = max(maxX, it.arguments.maxOrNull()!!)
+            maxY = max(maxY, it.values.maxOrNull()!!)
+        }
+
+        fun scaleX(x: Float): Float
+        {
+            return leftBound + (rightBound - leftBound)*( (x - minX) / (maxX - minX))
+        }
+
+        fun scaleY(y: Float): Float
+        {
+            return downBound + (upBound - downBound) * ( (y - minY) / (maxY - minY))
+        }
+// граница
+        canvas.drawLine(leftBound - broad, upBound - broad,
+            leftBound - broad, downBound + broad, paint(-1))
+        canvas.drawLine(leftBound - broad, downBound + broad,
+            rightBound + broad, downBound + broad, paint(-1))
+// единичные отрезки для наглядность отношения масштабов по координатам
+        val lengthX = maxX - minX
+        val lengthY = maxY - minY
+        val c = 15f
+        val step = sqrt(lengthX * lengthY / c)
+        var x = minX
+        var y = minY
+        while (x <= maxX + step)
+        {
+            canvas.drawLine(scaleX(x) - broad, downBound + streak + broad,
+                scaleX(x) - broad, downBound - streak + broad, paint(-1).setStrokeWidth(2.5f))
+            x += step
+        }
+        while (y <= maxY + step)
+        {
+            canvas.drawLine(leftBound + streak - broad, scaleY(y) + broad,
+                leftBound - streak - broad,  scaleY(y) + broad, paint(-1).setStrokeWidth(2.5f))
+            y += step
+        }
+
+        var id = 0
+        data.forEach{
+            for (i in 0 .. (it.values.size - 2)) {
+                canvas.drawLine(scaleX(it.arguments[i]), scaleY(it.values[i]),
+                scaleX(it.arguments[i + 1]), scaleY(it.values[i + 1]),
+                paint(id))
+            }
+
+            id++
+        }
+    }
+
     override fun onRender(canvas: Canvas, width: Int, height: Int, nanoTime: Long) {
         val contentScale = layer.contentScale
         canvas.scale(contentScale, contentScale)
@@ -331,6 +409,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
             Chart.HISTOGRAM -> histogram(data, names, canvas)
             Chart.DISPERSION_CHART -> dispersionChart(dataX, dataY, canvas)
             Chart.PETAL_CHART -> petalChart(dataRose[0].values.size, dataRose, canvas)
+            Chart.GRAPH_CHART -> graphChart(dataGraph[0].values.size, dataGraph, canvas)
             Chart.NULL -> Unit
         }
 

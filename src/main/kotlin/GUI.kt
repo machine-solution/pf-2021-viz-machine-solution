@@ -12,7 +12,6 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import java.io.File
-import java.lang.System.exit
 import kotlin.system.exitProcess
 
 @Composable
@@ -40,6 +39,7 @@ fun gui() = application {
         state = rememberWindowState(width = 850.dp, height = 400.dp)
     ) {
         val path = mutableStateOf("")
+        val pathSave = mutableStateOf("C:/Users/Dusha/IdeaProjects/pf-2021-viz-machine-solution/output.png")
         // фиктивная костыльная переменная
         val i = mutableStateOf(0)
         MaterialTheme {
@@ -78,7 +78,7 @@ fun gui() = application {
                     i.value = 1 - i.value
                 }
                 simpleButton(false, "Save"){
-                    needSave = true;
+                    needSave = true
                 }
                 simpleButton(false, "Exit"){
                     exitProcess(0)
@@ -96,7 +96,7 @@ fun gui() = application {
                     val log = isCorrectPath(path.value)
                     if (log != "The path is correct") {
                         Text(
-                            text = isCorrectPath(path.value),
+                            text = log,
                             color = Color.Red,
                         )
                     } else {
@@ -116,6 +116,22 @@ fun gui() = application {
                             Text("Paint the diagram")
                         }
                     }
+                }
+                TextField(
+                    value = pathSave.value,
+                    onValueChange = {
+                        pathSave.value = it
+                    },
+                    label = { Text("Enter a path to save the picture")}
+                )
+                val logSave = isCorrectPath(pathSave.value)
+                if (logSave != "The path is correct") {
+                    Text(
+                        text = logSave,
+                        color = Color.Red,
+                    )
+                } else {
+                    saveFile = pathSave.value
                 }
             }
         }

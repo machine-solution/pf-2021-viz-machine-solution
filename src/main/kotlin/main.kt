@@ -33,6 +33,7 @@ var petalChartData = PetalChartData()
 var graphChartData = GraphChartData()
 var chart = Chart.NULL
 var needSave = false
+var saveFile = "output.png"
 
 // сохраняет картинку в указанный png файл
 fun savePicture(fileName: String, layer: SkiaLayer)
@@ -470,6 +471,8 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
 
 
         // РИСОВАНИЕ
+
+        // белое полотно для красивого сохранения картинки
         canvas.drawRect(Rect(0f,0f,w * 1f,h * 1f), Paint().setARGB(255,255,255,255))
         // Отрисовка диаграмм
         when (chart) {
@@ -482,7 +485,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         }
         if (needSave)
         {
-            savePicture("output.png", layer)
+            savePicture(saveFile, layer)
             needSave = false
         }
 

@@ -74,6 +74,14 @@ fun gui() = application {
                 Button(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                     onClick = {
+                        needSave = true;
+                    }
+                ) {
+                    Text("Save")
+                }
+                Button(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    onClick = {
                         exitProcess(0)
                     }
                 ) {

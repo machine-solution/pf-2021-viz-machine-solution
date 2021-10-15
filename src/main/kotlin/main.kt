@@ -5,13 +5,15 @@ import org.jetbrains.skija.*
 import org.jetbrains.skiko.SkiaLayer
 import org.jetbrains.skiko.SkiaRenderer
 import org.jetbrains.skiko.SkiaWindow
+import org.jetbrains.skiko.toBufferedImage
 import java.awt.Dimension
 import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
 import java.io.File
+import javax.imageio.ImageIO
 import javax.swing.WindowConstants
 import kotlin.math.*
-import kotlin.random.*
+
 
 enum class Chart
 {
@@ -23,38 +25,101 @@ enum class Chart
     GRAPH_CHART,
 }
 
-val data = listOf(1f,2f,3f,4f,5f,6f,7f,8f,9f,10f,11f,12f,13f,14f,15f,16f,17f,18f,19f, 20f, 21f)
-val names = listOf("1", "2", "3","4", "5", "6","7", "8", "9", "10",
-    "11", "12", "13","14", "15", "16","17", "18", "19", "20", "21")
-val dataX = mutableListOf<Float>()
-val dataY = mutableListOf<Float>()
-
-val dataRose = mutableListOf(
-    Rose(listOf(1f,2f,3f,4f,4f)),
-    Rose(listOf(3f,1f,2f,5f,5f)),
-    Rose(listOf(2f,3f,1f,6f,6f)),
-)
-
-val dataGraph = mutableListOf(
-    Graph(listOf(1f,2f,3f), listOf(1f,1f,1f)),
-    Graph(listOf(1f,2f,3f), listOf(1f,0f,1f)),
-    Graph(listOf(1f,2f,3f), listOf(2f,4f,6f))
-)
+// глобальные данные к графикам
+// pieChartData содержит данные и для histogram
+var pieChartData = PieChartData()
+var dispersionChartData = DispersionChartData()
+var petalChartData = PetalChartData()
+var graphChartData = GraphChartData()
 var chart = Chart.NULL
+var needSave = false
 
-data class Rose(val values: List<Float>)
+// сохраняет картинку в указанный png файл
+fun savePicture(fileName: String, layer: SkiaLayer)
+{
+    val bitmap = layer.screenshot() ?: return
+    val image = bitmap.toBufferedImage()
+    val outputFile = File(fileName)
+    ImageIO.write(image, "png", outputFile)
+}
 
-data class Graph(val arguments: List<Float>, val values: List<Float>)
+data class Rose(val values: List<Float> = listOf())
+
+data class Graph(val arguments: List<Float> = listOf(), val values: List<Float> = listOf())
+
+data class PieChartData(val values: List<Float> = listOf(), val names: List<String> = listOf())
+
+data class DispersionChartData(val x: List<Float> = listOf(), val y: List<Float> = listOf())
+
+data class PetalChartData(val roses: List<Rose> = listOf())
+
+data class GraphChartData(val graphs: List<Graph> = listOf())
+
+// считывание данных из файла
+fun readPieChartData(path: String):PieChartData
+{
+    val strings = File(path).readLines()
+    val values = mutableListOf<Float>()
+    val names = mutableListOf<String>()
+    var i = 1
+    strings.forEach{
+        val s = it.split(" ")
+        values.add(s[0].toFloat())
+        if (s.size > 1)
+            names.add(it.substring(s[0].length))
+        else
+            names.add("unnamed data #${i++}")
+    }
+    return PieChartData(values, names)
+}
+
+fun readDispersionChartData(path: String):DispersionChartData
+{
+    val strings = File(path).readLines()
+    val x = mutableListOf<Float>()
+    val y = mutableListOf<Float>()
+    strings.forEach{
+        val s = it.split(" ")
+        x.add(s[0].toFloat())
+        y.add(s[1].toFloat())
+    }
+    return DispersionChartData(x, y)
+}
+
+fun readPetalChartData(path: String):PetalChartData
+{
+    val strings = File(path).readLines()
+    val roses = mutableListOf<Rose>()
+    strings.forEach{
+        val s = it.split(" ")
+        val values = s.map{ i -> i.toFloat() }
+        roses.add(Rose(values))
+    }
+    return PetalChartData(roses)
+}
+
+fun readGraphChartData(path: String):GraphChartData
+{
+    val strings = File(path).readLines()
+    val graphs = mutableListOf<Graph>()
+    var i = 0
+    while(i + 1 < strings.size){
+        val sArgs = strings[i].split(" ")
+        val arguments = sArgs.map{ it.toFloat() }
+        val sValues = strings[i + 1].split(" ")
+        val values = sValues.map{ it.toFloat() }
+        graphs.add(Graph(arguments, values))
+        i += 2
+    }
+    return GraphChartData(graphs)
+}
 
 fun main() {
 
-    val lines = File("dispersion.txt").readLines()
-    for (i in 1..1000) {
-//        File("dispersion.txt").appendText("${Random.nextFloat()} ${Random.nextFloat()}\n")
-        val xy = lines[i - 1].split(" ")
-        dataX.add(xy[0].toFloat())
-        dataY.add(xy[1].toFloat())
-    }
+    pieChartData = readPieChartData("example_pie_chart.txt")
+    dispersionChartData = readDispersionChartData("example_dispersion.txt")
+    petalChartData = readPetalChartData("example_petal_chart.txt")
+    graphChartData = readGraphChartData("example_graph_chart.txt")
 
     createWindow("draw area")
 
@@ -121,7 +186,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         return paint.setAlpha(17 * 6)
     }
 
-    private fun pieChart(data: List<Float>, names: List<String>, canvas: Canvas)
+    private fun pieChart(data: PieChartData, canvas: Canvas)
     {
         // константы расположения рисунка
         val spread = 5f
@@ -136,12 +201,12 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         val yOffset = 25f
 
         var i = 0
-        val sumData = data.sum()
+        val sumData = data.values.sum()
         var currentSum = 0f
         canvas.drawCircle((leftBound + rightBound) * 0.5f, (upBound + downBound) * 0.5f,
             (rightBound - leftBound) * 0.5f + spread * 2f,
             paint(-1).setStrokeWidth(0.5f * spread))
-        data.forEach{
+        data.values.forEach{
             // отрисовка диаграммы
             canvas.drawArc(leftBound + spread * cos((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
                 upBound + spread * sin((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
@@ -161,7 +226,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
                 xDescription + sizeDescription, yDescription + sizeDescription + i * yOffset)
             canvas.drawRect(rect, paint(i))
 
-            canvas.drawString("${names[i]} - ${"%.${2}f".format(it / sumData * 100f)}%",
+            canvas.drawString("${data.names[i]} - ${"%.${2}f".format(it / sumData * 100f)}%",
                 xDescription + sizeDescription * 2f,
                 yDescription + sizeDescription + i * yOffset,
                 font, paint(-1))
@@ -171,7 +236,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
 
     }
 
-    private fun histogram(data: List<Float>, names: List<String>, canvas: Canvas)
+    private fun histogram(data: PieChartData, canvas: Canvas)
     {
         // константы расположения рисунка
         val leftBound = 100f
@@ -182,11 +247,11 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         val height = 15f
         val indent = 15f
 
-        val maxData = data.maxOrNull() ?: 0f
-        val sumData = data.sum()
+        val maxData = data.values.maxOrNull() ?: 0f
+        val sumData = data.values.sum()
         var i = 0
 
-        data.forEach{
+        data.values.forEach{
             val rectBound = Rect(
                 leftBound - bold,
                 upBound + yOffset * i - bold,
@@ -202,7 +267,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
             )
             canvas.drawRect(rect, paint(i))
 
-            canvas.drawString("${names[i]} - ${"%.${2}f".format(it / sumData * 100f)}%",
+            canvas.drawString("${data.names[i]} - ${"%.${2}f".format(it / sumData * 100f)}%",
                 leftBound + (rightBound - leftBound) * (it / maxData) + indent,
                 upBound + yOffset * i + height,
                 font, paint(-1))
@@ -211,7 +276,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         }
     }
 
-    private fun dispersionChart(dataX: List<Float>, dataY: List<Float>, canvas: Canvas)
+    private fun dispersionChart(data: DispersionChartData, canvas: Canvas)
     {
         val leftBound = 50f
         val rightBound = 750f
@@ -220,10 +285,10 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         val broad = 20f
         val streak = 4.5f
 
-        val minX = dataX.minOrNull() ?: 0f
-        val maxX = dataX.maxOrNull() ?: 0f
-        val minY = dataY.minOrNull() ?: 0f
-        val maxY = dataY.maxOrNull() ?: 0f
+        val minX = data.x.minOrNull() ?: 0f
+        val maxX = data.x.maxOrNull() ?: 0f
+        val minY = data.y.minOrNull() ?: 0f
+        val maxY = data.y.maxOrNull() ?: 0f
 
         fun scaleX(x: Float): Float
         {
@@ -259,13 +324,13 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
             y += step
         }
 
-        for (it in dataX.indices)
+        for (it in data.x.indices)
         {
-            canvas.drawPoint(scaleX(dataX[it]), scaleY(dataY[it]), paint(-1).setStrokeWidth(3f))
+            canvas.drawPoint(scaleX(data.x[it]), scaleY(data.y[it]), paint(-1).setStrokeWidth(3f))
         }
     }
 
-    private fun petalChart(count: Int, data: List<Rose>, canvas: Canvas)
+    private fun petalChart(data: PetalChartData, canvas: Canvas)
     {
         val leftBound = 175f
         val rightBound = 625f
@@ -277,6 +342,8 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         val centerY = (upBound + downBound) / 2
         val radius = centerX - leftBound
         val radiusEnd = radius * 0.9f
+// а если в файле разное количество значенией?
+        val count = data.roses[0].values.size
         for (i in 0 until count)
         {
             canvas.drawLine(centerX, centerY,
@@ -286,13 +353,13 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         }
 
         val maxData = MutableList(count){ -1e9f }
-        data.forEach{
+        data.roses.forEach{
             for (i in 0 until count)
                 maxData[i] = max(maxData[i], it.values[i])
         }
 
         var id = 0
-        data.forEach{
+        data.roses.forEach{
             for (i in 0 until count)
             {
                 canvas.drawLine(
@@ -328,7 +395,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         }
     }
 
-    private fun graphChart(count: Int, data: List<Graph>, canvas: Canvas)
+    private fun graphChart(data: GraphChartData, canvas: Canvas)
     {
         val leftBound = 50f
         val rightBound = 750f
@@ -342,7 +409,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         var minY = 1e9f
         var maxY = -1e9f
 
-        data.forEach{
+        data.graphs.forEach{
             minX = min(minX, it.arguments.minOrNull()!!)
             minY = min(minY, it.values.minOrNull()!!)
             maxX = max(maxX, it.arguments.maxOrNull()!!)
@@ -384,11 +451,11 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         }
 
         var id = 0
-        data.forEach{
+        data.graphs.forEach{
             for (i in 0 .. (it.values.size - 2)) {
                 canvas.drawLine(scaleX(it.arguments[i]), scaleY(it.values[i]),
                 scaleX(it.arguments[i + 1]), scaleY(it.values[i + 1]),
-                paint(id))
+                paint(id).setStrokeWidth(3f))
             }
 
             id++
@@ -403,14 +470,20 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
 
 
         // РИСОВАНИЕ
+        canvas.drawRect(Rect(0f,0f,w * 1f,h * 1f), Paint().setARGB(255,255,255,255))
         // Отрисовка диаграмм
         when (chart) {
-            Chart.PIE_CHART -> pieChart(data, names, canvas)
-            Chart.HISTOGRAM -> histogram(data, names, canvas)
-            Chart.DISPERSION_CHART -> dispersionChart(dataX, dataY, canvas)
-            Chart.PETAL_CHART -> petalChart(dataRose[0].values.size, dataRose, canvas)
-            Chart.GRAPH_CHART -> graphChart(dataGraph[0].values.size, dataGraph, canvas)
+            Chart.PIE_CHART -> pieChart(pieChartData, canvas)
+            Chart.HISTOGRAM -> histogram(pieChartData, canvas)
+            Chart.DISPERSION_CHART -> dispersionChart(dispersionChartData, canvas)
+            Chart.PETAL_CHART -> petalChart(petalChartData, canvas)
+            Chart.GRAPH_CHART -> graphChart(graphChartData, canvas)
             Chart.NULL -> Unit
+        }
+        if (needSave)
+        {
+            savePicture("output.png", layer)
+            needSave = false
         }
 
         //

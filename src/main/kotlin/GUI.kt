@@ -97,7 +97,7 @@ fun gui() = application {
                         onValueChange = {
                             path.value = it
                         },
-                        label = { Text("Enter a path to data file")}
+                        label = { Text("Enter the path to data file")}
                     )
                     val log = isCorrectPath(path.value)
                     if (log != "The path is correct") {
@@ -128,7 +128,7 @@ fun gui() = application {
                     onValueChange = {
                         pathSave.value = it
                     },
-                    label = { Text("Enter a path to save the picture")}
+                    label = { Text("Enter the path to save the picture")}
                 )
                 val logSave = isCorrectPath(pathSave.value)
                 if (logSave != "The path is correct") {

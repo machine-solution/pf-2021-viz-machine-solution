@@ -44,7 +44,7 @@ fun gui() = application {
         state = rememberWindowState(width = 850.dp, height = 400.dp)
     ) {
         val path = mutableStateOf("")
-        val pathSave = mutableStateOf("C:/Users/Dusha/IdeaProjects/pf-2021-viz-machine-solution/output.png")
+        val pathSave = mutableStateOf("output.png")
         // фиктивная костыльная переменная
         val i = mutableStateOf(0)
         MaterialTheme {

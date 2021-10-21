@@ -52,67 +52,94 @@ data class PieChartData(val values: List<Float> = listOf(), val names: List<Stri
 
 data class DispersionChartData(val x: List<Float> = listOf(), val y: List<Float> = listOf())
 
-data class PetalChartData(val roses: List<Rose> = listOf())
+data class PetalChartData(val roses: List<Rose> = listOf(), val countOfPetals: Int = 0)
 
 data class GraphChartData(val graphs: List<Graph> = listOf())
 
 // считывание данных из файла
 fun readPieChartData(path: String):PieChartData
 {
-    val strings = File(path).readLines()
-    val values = mutableListOf<Float>()
-    val names = mutableListOf<String>()
-    var i = 1
-    strings.forEach{
-        val s = it.split(" ")
-        values.add(s[0].toFloat())
-        if (s.size > 1)
-            names.add(it.substring(s[0].length))
-        else
-            names.add("unnamed data #${i++}")
+    try {
+        val strings = File(path).readLines()
+        val values = mutableListOf<Float>()
+        val names = mutableListOf<String>()
+        var i = 1
+        strings.forEach {
+            val s = it.split(" ")
+            values.add(s[0].toFloat())
+            if (s.size > 1)
+                names.add(it.substring(s[0].length))
+            else
+                names.add("unnamed data #${i++}")
+        }
+        return PieChartData(values, names)
     }
-    return PieChartData(values, names)
+    catch(e: Exception) {
+        return PieChartData()
+    }
 }
 
 fun readDispersionChartData(path: String):DispersionChartData
 {
-    val strings = File(path).readLines()
-    val x = mutableListOf<Float>()
-    val y = mutableListOf<Float>()
-    strings.forEach{
-        val s = it.split(" ")
-        x.add(s[0].toFloat())
-        y.add(s[1].toFloat())
+    try {
+        val strings = File(path).readLines()
+        val x = mutableListOf<Float>()
+        val y = mutableListOf<Float>()
+        strings.forEach {
+            val s = it.split(" ")
+            x.add(s[0].toFloat())
+            y.add(s[1].toFloat())
+        }
+        return DispersionChartData(x, y)
     }
-    return DispersionChartData(x, y)
+    catch (e: Exception) {
+        return DispersionChartData()
+    }
 }
 
 fun readPetalChartData(path: String):PetalChartData
 {
-    val strings = File(path).readLines()
-    val roses = mutableListOf<Rose>()
-    strings.forEach{
-        val s = it.split(" ")
-        val values = s.map{ i -> i.toFloat() }
-        roses.add(Rose(values))
+    try {
+        val strings = File(path).readLines()
+        val roses = mutableListOf<Rose>()
+        strings.forEach {
+            val s = it.split(" ")
+            val values = s.map { i -> i.toFloat() }
+            roses.add(Rose(values))
+
+            if (roses[0].values.size != values.size)
+                return PetalChartData() // проверка на корректность ввода
+        }
+        return PetalChartData(roses, roses[0].values.size)
     }
-    return PetalChartData(roses)
+    catch (e: Exception) {
+        return PetalChartData()
+    }
 }
 
 fun readGraphChartData(path: String):GraphChartData
 {
-    val strings = File(path).readLines()
-    val graphs = mutableListOf<Graph>()
-    var i = 0
-    while(i + 1 < strings.size){
-        val sArgs = strings[i].split(" ")
-        val arguments = sArgs.map{ it.toFloat() }
-        val sValues = strings[i + 1].split(" ")
-        val values = sValues.map{ it.toFloat() }
-        graphs.add(Graph(arguments, values))
-        i += 2
+    try {
+        val strings = File(path).readLines()
+        val graphs = mutableListOf<Graph>()
+        var i = 0
+        while (i + 1 < strings.size) {
+            val sArgs = strings[i].split(" ")
+            val arguments = sArgs.map { it.toFloat() }
+            val sValues = strings[i + 1].split(" ")
+            val values = sValues.map { it.toFloat() }
+            graphs.add(Graph(arguments, values))
+
+            if (arguments.size != values.size)
+                return GraphChartData() // проверка на корректность ввода
+
+            i += 2
+        }
+        return GraphChartData(graphs)
     }
-    return GraphChartData(graphs)
+    catch (e: Exception) {
+        return GraphChartData()
+    }
 }
 
 fun main() {
@@ -343,8 +370,8 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         val centerY = (upBound + downBound) / 2
         val radius = centerX - leftBound
         val radiusEnd = radius * 0.9f
-// а если в файле разное количество значенией?
-        val count = data.roses[0].values.size
+        // возможен пустой массив
+        val count = data.countOfPetals
         for (i in 0 until count)
         {
             canvas.drawLine(centerX, centerY,

@@ -149,8 +149,6 @@ fun main() {
     petalChartData = readPetalChartData("example_input/example_petal_chart.txt")
     graphChartData = readGraphChartData("example_input/example_graph_chart.txt")
 
-    createWindow("draw area")
-
     gui()
 }
 
@@ -518,13 +516,12 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
             Chart.GRAPH_CHART -> graphChart(graphChartData, canvas)
             Chart.NULL -> Unit
         }
+
         if (needSave)
         {
             savePicture(saveFile, layer)
             needSave = false
         }
-
-        //
 
         layer.needRedraw()
     }

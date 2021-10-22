@@ -144,10 +144,10 @@ fun readGraphChartData(path: String):GraphChartData
 
 fun main() {
 
-    pieChartData = readPieChartData("example_pie_chart.txt")
-    dispersionChartData = readDispersionChartData("example_dispersion.txt")
-    petalChartData = readPetalChartData("example_petal_chart.txt")
-    graphChartData = readGraphChartData("example_graph_chart.txt")
+    pieChartData = readPieChartData("example_input/example_pie_chart.txt")
+    dispersionChartData = readDispersionChartData("example_input/example_dispersion.txt")
+    petalChartData = readPetalChartData("example_input/example_petal_chart.txt")
+    graphChartData = readGraphChartData("example_input/example_graph_chart.txt")
 
     createWindow("draw area")
 
@@ -222,6 +222,7 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         val rightBound = 300f
         val upBound = 100f
         val downBound = 300f
+        val broad = spread * 2f
         val xDescription = 350f
         val yDescription = 25f
         val sizeDescription = 10f
@@ -231,10 +232,17 @@ class Renderer(private val layer: SkiaLayer): SkiaRenderer {
         var i = 0
         val sumData = data.values.sum()
         var currentSum = 0f
-        canvas.drawCircle((leftBound + rightBound) * 0.5f, (upBound + downBound) * 0.5f,
-            (rightBound - leftBound) * 0.5f + spread * 2f,
-            paint(-1).setStrokeWidth(0.5f * spread))
         data.values.forEach{
+
+            // отрисовка обводки
+            canvas.drawArc(leftBound - broad + spread * cos((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
+                upBound - broad + spread * sin((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
+                rightBound + broad + spread * cos((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
+                downBound + broad + spread * sin((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
+                currentSum/sumData * 360f,
+                it/sumData * 360f,true,
+                paint(-1))
+
             // отрисовка диаграммы
             canvas.drawArc(leftBound + spread * cos((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
                 upBound + spread * sin((currentSum + 0.5f * it)/sumData * PI * 2f).toFloat(),
